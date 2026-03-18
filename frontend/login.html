@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Entrar al chat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:      #0a0a0f;
+    --surface: #13131a;
+    --border:  #2a2a3a;
+    --accent:  #7c6dfa;
+    --accent2: #fa6d9b;
+    --text:    #e8e8f0;
+    --muted:   #6b6b80;
+    --error:   #fa6d6d;
+    --radius:  14px;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  /* ── fondo animado ── */
+  .bg-grid {
+    position: fixed; inset: 0; z-index: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 48px 48px;
+    opacity: .35;
+    animation: gridpulse 8s ease-in-out infinite alternate;
+  }
+  @keyframes gridpulse { from { opacity:.25 } to { opacity:.45 } }
+
+  .glow-blob {
+    position: fixed; border-radius: 50%; filter: blur(90px); z-index: 0; pointer-events: none;
+  }
+  .blob1 { width:420px; height:420px; top:-120px; left:-100px; background: rgba(124,109,250,.18); animation: blobmove 12s ease-in-out infinite alternate; }
+  .blob2 { width:320px; height:320px; bottom:-80px; right:-60px; background: rgba(250,109,155,.14); animation: blobmove 9s ease-in-out infinite alternate-reverse; }
+  @keyframes blobmove { from { transform: translate(0,0) scale(1) } to { transform: translate(30px,20px) scale(1.08) } }
+
+  /* ── card ── */
+  .card {
+    position: relative; z-index: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 52px 48px 44px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 0 0 1px rgba(255,255,255,.04), 0 32px 80px rgba(0,0,0,.6);
+    animation: cardIn .6s cubic-bezier(.22,1,.36,1) both;
+  }
+  @keyframes cardIn { from { opacity:0; transform: translateY(28px) scale(.97) } to { opacity:1; transform: none } }
+
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 28px;
+    letter-spacing: -1px;
+    margin-bottom: 6px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .subtitle {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 40px;
+    letter-spacing: .04em;
+  }
+
+  label {
+    display: block;
+    font-size: 11px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  .input-wrap {
+    position: relative;
+    margin-bottom: 28px;
+  }
+
+  input[type="text"] {
+    width: 100%;
+    background: var(--bg);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    font-family: 'DM Mono', monospace;
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--text);
+    letter-spacing: .08em;
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
+    text-transform: uppercase;
+  }
+  input[type="text"]::placeholder { color: var(--muted); font-size: 14px; letter-spacing: .04em; text-transform: none; }
+  input[type="text"]:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(124,109,250,.15);
+  }
+  input.error {
+    border-color: var(--error) !important;
+    box-shadow: 0 0 0 3px rgba(250,109,109,.12) !important;
+    animation: shake .35s ease;
+  }
+  @keyframes shake {
+    0%,100%{ transform:translateX(0) }
+    20%    { transform:translateX(-6px) }
+    40%    { transform:translateX(6px) }
+    60%    { transform:translateX(-4px) }
+    80%    { transform:translateX(4px) }
+  }
+
+  .error-msg {
+    font-size: 12px;
+    color: var(--error);
+    margin-top: 8px;
+    min-height: 16px;
+    opacity: 0;
+    transition: opacity .2s;
+  }
+  .error-msg.show { opacity: 1; }
+
+  button {
+    width: 100%;
+    padding: 15px;
+    border: none;
+    border-radius: var(--radius);
+    background: linear-gradient(135deg, var(--accent), #9b5de5);
+    color: #fff;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: .04em;
+    cursor: pointer;
+    transition: opacity .2s, transform .15s, box-shadow .2s;
+    box-shadow: 0 4px 20px rgba(124,109,250,.35);
+  }
+  button:hover:not(:disabled) { opacity: .9; transform: translateY(-1px); box-shadow: 0 8px 28px rgba(124,109,250,.45); }
+  button:active:not(:disabled) { transform: translateY(0); }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+
+  .spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid rgba(255,255,255,.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+    vertical-align: middle;
+    margin-right: 8px;
+  }
+  @keyframes spin { to { transform: rotate(360deg) } }
+
+  .hint {
+    margin-top: 28px;
+    font-size: 11px;
+    color: var(--muted);
+    text-align: center;
+    line-height: 1.6;
+  }
+  .hint span { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<div class="bg-grid"></div>
+<div class="glow-blob blob1"></div>
+<div class="glow-blob blob2"></div>
+
+<div class="card">
+  <div class="logo">vchat</div>
+  <p class="subtitle">// sin cuentas. solo tu código.</p>
+
+  <label for="code-input">Tu código de acceso</label>
+  <div class="input-wrap">
+    <input
+      type="text"
+      id="code-input"
+      placeholder="ej: abc12345"
+      maxlength="20"
+      autocomplete="off"
+      autocorrect="off"
+      spellcheck="false"
+    >
+    <p class="error-msg" id="error-msg"></p>
+  </div>
+
+  <button id="btn-enter" onclick="doLogin()">
+    Entrar
+  </button>
+
+  <p class="hint">
+    No tienes código? Pídele uno a<br>
+    <span>quien administra el chat</span>
+  </p>
+</div>
+
+<script>
+  const input = document.getElementById('code-input');
+  const btn   = document.getElementById('btn-enter');
+  const errEl = document.getElementById('error-msg');
+
+  // Enter también envía
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+  // Limpia error al escribir
+  input.addEventListener('input', () => {
+    input.classList.remove('error');
+    errEl.classList.remove('show');
+  });
+
+  async function doLogin() {
+    const code = input.value.trim();
+    if (!code) { showError('Escribe tu código primero'); return; }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Verificando...';
+
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+        credentials: 'include',
+      });
+      const data = await res.json();
+
+      if (data.ok) {
+        btn.innerHTML = '✓ Entrando...';
+        setTimeout(() => { window.location.href = '/chat'; }, 400);
+      } else {
+        showError(data.error || 'Código inválido');
+        btn.disabled = false;
+        btn.innerHTML = 'Entrar';
+      }
+    } catch {
+      showError('Error de conexión con el servidor');
+      btn.disabled = false;
+      btn.innerHTML = 'Entrar';
+    }
+  }
+
+  function showError(msg) {
+    input.classList.add('error');
+    errEl.textContent = msg;
+    errEl.classList.add('show');
+  }
+
+  // Auto-focus al cargar
+  window.addEventListener('load', () => input.focus());
+</script>
+</body>
+</html>
