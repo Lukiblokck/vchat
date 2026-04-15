@@ -39,7 +39,7 @@ socketio = SocketIO(
     app,
     cors_allowed_origins="*",
     manage_session=False,
-    max_http_buffer_size=200 * 1024 * 1024,   # 200 MB máx por mensaje WS
+    max_http_buffer_size=200 * 1024 * 1024,
 )
 
 init_db()
@@ -97,9 +97,10 @@ def on_connect():
     room_manager.join_room(sid, room, username)
     sio_join(room)
     history = get_recent_messages(room, limit=50)
-    emit("history", {"messages": history})
+    emit("history", {"messages": history, "room": room})
     emit("user_joined", {"username": username}, to=room)
     emit("users_update", {"users": room_manager.get_users_in_room(room)}, to=room)
+    emit("available_rooms", {"rooms": room_manager.get_available_rooms(), "current": room})
     print(f"[+] {username} conectado (sid={sid})")
 
 @socketio.on("disconnect")
@@ -127,10 +128,6 @@ def on_message(data):
 
 @socketio.on("send_file")
 def on_file(data):
-    """
-    Recibe: { "mime": "image/jpeg", "data": "<base64>" }
-    Guarda en disco, emite la URL a la sala.
-    """
     if "username" not in session:
         return
     mime = (data.get("mime") or "").strip().lower()
@@ -164,6 +161,34 @@ def on_typing(data):
     emit("user_typing",
          {"username": session["username"], "typing": data.get("typing", False)},
          to=room, include_self=False)
+
+@socketio.on("switch_room")
+def on_switch_room(data):
+    if "username" not in session:
+        return
+    new_room = data.get("room", "").strip()
+    if not new_room or new_room not in room_manager.get_available_rooms():
+        return
+    sid = request.sid
+    username = session["username"]
+    old_room = room_manager.get_room_of(sid)
+    if old_room == new_room:
+        return
+
+    # Salir de la sala actual
+    sio_leave(old_room)
+    room_manager.leave_room(sid)
+    emit("user_left", {"username": username}, to=old_room)
+    emit("users_update", {"users": room_manager.get_users_in_room(old_room)}, to=old_room)
+
+    # Entrar a la nueva
+    room_manager.join_room(sid, new_room, username)
+    sio_join(new_room)
+    history = get_recent_messages(new_room, limit=50)
+    emit("history", {"messages": history, "room": new_room})
+    emit("user_joined", {"username": username}, to=new_room)
+    emit("users_update", {"users": room_manager.get_users_in_room(new_room)}, to=new_room)
+    emit("available_rooms", {"rooms": room_manager.get_available_rooms(), "current": new_room})
 
 
 # ═══════════════════════════════════════════

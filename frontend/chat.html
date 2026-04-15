@@ -250,6 +250,16 @@
     .app { grid-template-columns: 1fr; }
     .sidebar { display: none; }
   }
+  .rooms-list { padding: 0 12px 8px; flex-shrink: 0; }
+  .room-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 10px; border-radius: 8px;
+    font-size: 13px; cursor: pointer;
+    color: var(--muted); transition: background .15s, color .15s;
+  }
+  .room-item:hover { background: var(--surface2); color: var(--text); }
+  .room-item.active { background: rgba(124,109,250,.15); color: var(--accent); }
+  .room-item::before { content: '#'; font-family: 'DM Mono', monospace; font-size: 12px; }
 </style>
 </head>
 <body>
@@ -262,6 +272,8 @@
       <div class="logo">vchat</div>
       <div class="room-badge" id="room-badge">general</div>
     </div>
+    <div class="section-title">Salas</div>
+    <div class="rooms-list" id="rooms-list"></div>
     <div class="section-title">Conectados</div>
     <div class="users-list" id="users-list"></div>
     <div class="sidebar-footer">
@@ -312,6 +324,7 @@
 <script>
 // ── estado ──
 let ME = null;
+let currentRoom = 'general';
 let typingTimer = null;
 let isTyping = false;
 const avatarCache = {};
@@ -337,7 +350,12 @@ function initSocket() {
     document.getElementById('room-badge').style.opacity = '1';
   });
 
-  socket.on('history', ({ messages }) => {
+  socket.on('history', ({ messages, room }) => {
+    if (room) {
+      currentRoom = room;
+      document.getElementById('topbar-room').textContent = room;
+      document.getElementById('room-badge').textContent = room;
+    }
     const box = document.getElementById('messages');
     box.innerHTML = '';
     lastAuthor = null; lastTime = null;
@@ -355,6 +373,10 @@ function initSocket() {
 
   socket.on('users_update', ({ users }) => renderUsers(users));
 
+  socket.on('available_rooms', ({ rooms, current }) => {
+    renderRooms(rooms, current);
+  });
+
   socket.on('user_typing', ({ username, typing }) => {
     const el = document.getElementById('typing-indicator');
     el.innerHTML = typing
@@ -370,6 +392,24 @@ function initSocket() {
     document.getElementById('room-badge').style.opacity = '.4';
     appendSystem('Desconectado — intentando reconectar...');
   });
+}
+
+// ── salas ──
+function renderRooms(rooms, active) {
+  const list = document.getElementById('rooms-list');
+  list.innerHTML = '';
+  rooms.forEach(room => {
+    const el = document.createElement('div');
+    el.className = 'room-item' + (room === active ? ' active' : '');
+    el.textContent = room;
+    el.onclick = () => switchRoom(room);
+    list.appendChild(el);
+  });
+}
+
+function switchRoom(room) {
+  if (room === currentRoom) return;
+  window.socket.emit('switch_room', { room });
 }
 
 // ── usuarios ──
@@ -494,7 +534,7 @@ function sendMessage() {
 function handleFile(input) {
   const file = input.files[0];
   if (!file) return;
-  input.value = ''; // resetea para poder subir el mismo archivo dos veces
+  input.value = '';
 
   const mime = file.type;
   const isImage = mime.startsWith('image/');
@@ -504,7 +544,6 @@ function handleFile(input) {
     return;
   }
 
-  // muestra progreso inline
   const box = document.getElementById('messages');
   const progressEl = document.createElement('div');
   progressEl.className = 'msg-group mine';
@@ -529,11 +568,7 @@ function handleFile(input) {
     const bar = document.getElementById('ubar');
     if (bar) bar.style.width = '100%';
     setTimeout(() => progressEl.remove(), 300);
-
-    window.socket.emit('send_file', {
-      mime,
-      data: reader.result,   // incluye prefijo data:...;base64,  (el server lo limpia)
-    });
+    window.socket.emit('send_file', { mime, data: reader.result });
   };
   reader.onerror = () => {
     progressEl.remove();
