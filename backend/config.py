@@ -1,25 +1,18 @@
-# ─────────────────────────────────────────────
-#  config.py  –  Ajusta esto con tus amigos
-# ─────────────────────────────────────────────
+from dotenv import load_dotenv
+import os
 
-# Diccionario: CÓDIGO → apodo visible en el chat
-# Comparte cada código solo con quien quieras que entre.
-USER_CODES = {
-    "A2I0T1O0RF": "Aitor F",
-    "I2Z0A1N1": "Izan",
-    "2A0I1T1ORN": "Aitor N",
-    "N2I0K1O1LAI": "Nikolai",
-    "J2U0A1N1": "Juan Pablo",
-}
+load_dotenv()
 
-# Sala general por defecto
+# Parsea "CODIGO:Nombre,CODIGO2:Nombre2" → dict
+def _parse_codes(raw: str) -> dict:
+    result = {}
+    for pair in raw.split(","):
+        code, name = pair.split(":", 1)
+        result[code.strip()] = name.strip()
+    return result
+
+USER_CODES = _parse_codes(os.getenv("USER_CODES", ""))
 DEFAULT_ROOM = "general"
-
-# Más salas que se pueden usar, si quieren
 ROOMS = ["general", "gaming", "deberes", "examenes", "off-topic"]
-
-# Clave secreta para las sesiones Flask (cámbiala por algo aleatorio)
-SECRET_KEY = "skibidi-sigma-pomni-digital-fortnite-chamba"
-
-# Puerto del servidor
-PORT = 8080
+SECRET_KEY = os.getenv("SECRET_KEY", "fallback-key-insegura")
+PORT = int(os.getenv("PORT", 8080))
