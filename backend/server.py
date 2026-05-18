@@ -30,6 +30,8 @@ EXT_MAP = {
     "video/quicktime": ".mov",
 }
 
+MAX_FILE_MB = 300
+
 # ── App ──────────────────────────────────────
 app = Flask(__name__, static_folder="../frontend", static_url_path="")
 app.secret_key = SECRET_KEY
@@ -94,7 +96,11 @@ def on_connect():
     username = session["username"]
     room = DEFAULT_ROOM
     sid = request.sid
-    room_manager.join_room(sid, room, username)
+    try:
+        room_manager.join_room(sid, room, username)
+    except Exception as e:
+        print(f"[!] Error al unir {username} a sala: {e}")
+        return False
     sio_join(room)
     history = get_recent_messages(room, limit=50)
     emit("history", {"messages": history, "room": room})
@@ -142,6 +148,11 @@ def on_file(data):
     except Exception:
         emit("upload_error", {"msg": "Archivo corrupto"})
         return
+
+    if len(file_bytes) > MAX_FILE_MB * 1024 * 1024:
+        emit("upload_error", {"msg": f"Archivo demasiado grande (máx {MAX_FILE_MB} MB)"})
+        return
+
     filename = f"{uuid.uuid4().hex}{EXT_MAP.get(mime, '')}"
     with open(os.path.join(UPLOADS_DIR, filename), "wb") as f:
         f.write(file_bytes)
@@ -175,13 +186,11 @@ def on_switch_room(data):
     if old_room == new_room:
         return
 
-    # Salir de la sala actual
     sio_leave(old_room)
     room_manager.leave_room(sid)
     emit("user_left", {"username": username}, to=old_room)
     emit("users_update", {"users": room_manager.get_users_in_room(old_room)}, to=old_room)
 
-    # Entrar a la nueva
     room_manager.join_room(sid, new_room, username)
     sio_join(new_room)
     history = get_recent_messages(new_room, limit=50)

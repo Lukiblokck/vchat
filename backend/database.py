@@ -4,7 +4,7 @@
 
 import sqlite3
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "..", "chat.db")
 
@@ -27,22 +27,14 @@ def init_db():
                 type      TEXT    NOT NULL DEFAULT 'text',
                 timestamp TEXT    NOT NULL
             );
-
-            CREATE TABLE IF NOT EXISTS users_online (
-                code      TEXT PRIMARY KEY,
-                username  TEXT NOT NULL,
-                room      TEXT NOT NULL DEFAULT 'general',
-                joined_at TEXT NOT NULL
-            );
         """)
-        # migración: añade columna 'type' si la BD ya existía sin ella
         cols = [r[1] for r in conn.execute("PRAGMA table_info(messages)").fetchall()]
         if "type" not in cols:
             conn.execute("ALTER TABLE messages ADD COLUMN type TEXT NOT NULL DEFAULT 'text'")
 
 
 def save_message(room: str, username: str, text: str, msg_type: str = "text") -> dict:
-    timestamp = datetime.utcnow().isoformat(timespec="seconds") + "Z"
+    timestamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
     with get_connection() as conn:
         cursor = conn.execute(
             "INSERT INTO messages (room, username, text, type, timestamp) VALUES (?, ?, ?, ?, ?)",
