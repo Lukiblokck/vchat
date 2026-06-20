@@ -3,4 +3,4 @@ flask-socketio>=5.3
 flask-cors>=4.0
 python-socketio>=5.10
 python-dotenv>=1.2.2
-eventlet>=0.35        # servidor async para producción
+eventlet>=0.35
